@@ -2,7 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Content.Server.Chat.Managers;
+using Content.Server.EUI;
 using Content.Shared.CCVar;
 using Robust.Server.Player;
 using Robust.Shared.Configuration;
@@ -15,13 +15,14 @@ namespace Content.Server.Discord.DiscordLink;
 
 /// <summary>
 ///     On player connect, asks algabot whether this Wizden account has a
-///     Discord link. If not, mints a one-shot token and DMs the player a
-///     system message telling them how to redeem it on Discord.
+///     Discord link. If not, mints a one-shot token and opens a popup EUI
+///     showing the player how to redeem it on Discord (with copy + open
+///     buttons).
 ///
 ///     Failure modes are intentionally quiet: if the bot is down or
 ///     misconfigured (empty URL/secret), the manager logs once at startup and
-///     skips the per-connect calls. We don't want a broken Discord
-///     integration to block players from joining the round.
+///     skips the per-connect calls. A broken Discord integration should not
+///     block players from joining the round.
 /// </summary>
 public sealed partial class DiscordLinkManager : IDiscordLinkManager
 {
@@ -30,7 +31,7 @@ public sealed partial class DiscordLinkManager : IDiscordLinkManager
     // class to be `partial` to emit a matching InjectDependencies override.
     [Dependency] private IConfigurationManager _cfg = default!;
     [Dependency] private IPlayerManager _playerManager = default!;
-    [Dependency] private IChatManager _chat = default!;
+    [Dependency] private EuiManager _eui = default!;
 
     private ISawmill _sawmill = default!;
     private AlgabotClient? _client;
@@ -82,9 +83,8 @@ public sealed partial class DiscordLinkManager : IDiscordLinkManager
 
     private async void OnPlayerStatusChanged(object? sender, SessionStatusEventArgs e)
     {
-        // InGame is the moment chat is reliably available to the player —
-        // Connected is too early, the client hasn't finished handshake and
-        // the chat panel hasn't initialized.
+        // InGame is the moment the client UI is ready to receive an EUI open.
+        // Connected is too early: the handshake isn't finished.
         if (e.NewStatus != SessionStatus.InGame)
             return;
 
@@ -110,15 +110,7 @@ public sealed partial class DiscordLinkManager : IDiscordLinkManager
 
         var tok = await _client.IssueTokenAsync(userId, session.Name, cancel);
 
-        var minutes = tok.TtlSeconds / 60;
-        var invite = string.IsNullOrWhiteSpace(tok.InviteUrl) ? string.Empty : $" ({tok.InviteUrl})";
-        var channel = string.IsNullOrWhiteSpace(tok.LinkChannel) ? "канал бота" : $"#{tok.LinkChannel}";
-        var msg =
-            $"[Discord] Твой аккаунт пока не привязан к Discord. " +
-            $"Зайди в наш Discord{invite}, в {channel}, и отправь:\n" +
-            $"    {tok.RedeemHint}\n" +
-            $"Токен живёт {minutes} мин. После привязки тебе автоматически выдадутся роли с Discord.";
-
-        _chat.DispatchServerMessage(session, msg);
+        var eui = new DiscordLinkEui(tok.Token, tok.InviteUrl, tok.LinkChannel);
+        _eui.OpenEui(eui, session);
     }
 }
