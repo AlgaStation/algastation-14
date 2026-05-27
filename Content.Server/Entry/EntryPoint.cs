@@ -71,6 +71,7 @@ namespace Content.Server.Entry
         [Dependency] private IStatusHost _host = default!;
         [Dependency] private IVoteManager _voteManager = default!;
         [Dependency] private IWatchlistWebhookManager _watchlistWebhookManager = default!;
+        [Dependency] private IDiscordLinkManager _discordLinkManager = default!;
         [Dependency] private JobWhitelistManager _job = default!;
         [Dependency] private MultiServerKickManager _multiServerKick = default!;
         [Dependency] private PlayTimeTrackingManager _playTimeTracking = default!;
@@ -135,6 +136,7 @@ namespace Content.Server.Entry
             _updateManager.Initialize();
             _playTimeTracking.Initialize();
             _watchlistWebhookManager.Initialize();
+            _discordLinkManager.Initialize();
             _job.Initialize();
             _rateLimit.Initialize();
         }
