@@ -23,11 +23,14 @@ namespace Content.Server.Discord.DiscordLink;
 ///     skips the per-connect calls. We don't want a broken Discord
 ///     integration to block players from joining the round.
 /// </summary>
-public sealed class DiscordLinkManager : IDiscordLinkManager
+public sealed partial class DiscordLinkManager : IDiscordLinkManager
 {
-    [Dependency] private readonly IConfigurationManager _cfg = default!;
-    [Dependency] private readonly IPlayerManager _playerManager = default!;
-    [Dependency] private readonly IChatManager _chat = default!;
+    // No `readonly` and no constructor: SS14's IoC writes [Dependency] fields
+    // via reflection after construction, and the source generator needs the
+    // class to be `partial` to emit a matching InjectDependencies override.
+    [Dependency] private IConfigurationManager _cfg = default!;
+    [Dependency] private IPlayerManager _playerManager = default!;
+    [Dependency] private IChatManager _chat = default!;
 
     private ISawmill _sawmill = default!;
     private AlgabotClient? _client;
